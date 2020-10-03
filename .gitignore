@@ -1,0 +1,7 @@
+.idea/*
+__pycache__/
+
+**/*.mpeg
+**/*.mp3
+**/*.whl
+**/*.google-cookie
