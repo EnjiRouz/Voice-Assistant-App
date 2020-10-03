@@ -7,6 +7,7 @@
 * производить поисковый запрос в поисковой системе Google
   (а также открывать список результатов и сами результаты данного запроса);
 * производить поисковый запрос видео в системе YouTube и открывать список результатов данного запроса;
+* выполнять поиск определения в Wikipedia c дальнейшим прочтением первых двух предложений;
 * TODO........
 
 Голосовой ассистент использует для синтеза речи встроенные в операционную систему Windows 10 возможности
@@ -25,6 +26,7 @@ pip install PyAudio-0.2.11-cp37-cp37m-win_amd64.whl
 pip install google
 pip install SpeechRecognition
 pip install pyttsx3
+pip install wikipedia-api
 
 Дополнительную информацию по установке и использованию библиотек можно найти здесь:
 https://pypi.org/
@@ -33,14 +35,15 @@ import speech_recognition  # распознавание пользователь
 from termcolor import colored  # вывод цветных логов (для выделения распознанной речи)
 from googlesearch import search  # поиск в Google
 import pyttsx3  # синтез речи (Text-To-Speech)
+import wikipediaapi  # поиск определений в Wikipedia
 import random  # генератор случайных чисел
-import webbrowser  # работа с использованием бразуреа по умолчанию (открывание вкладок с web-страницей)
+import webbrowser  # работа с использованием браузера по умолчанию (открывание вкладок с web-страницей)
 
 
 # информация о владельце, включающие имя, город проживания
 class OwnerPerson:
-    name = ''
-    home_city = ''
+    name = ""
+    home_city = ""
 
     def set_name(self, name):
         self.name = name
@@ -51,9 +54,9 @@ class OwnerPerson:
 
 # настройки голосового ассистента, включающие имя, пол, язык речи
 class VoiceAssistant:
-    name = ''
-    sex = ''
-    speech_language = ''
+    name = ""
+    sex = ""
+    speech_language = ""
 
     def set_name(self, name):
         self.name = name
@@ -69,7 +72,7 @@ class VoiceAssistant:
 def setup_assistant_voice():
     voices = ttsEngine.getProperty("voices")
 
-    if assistant.speech_language == "en-US":
+    if assistant.speech_language == "en":
         if assistant.sex == "female":
             # Microsoft Zira Desktop - English (United States)
             ttsEngine.setProperty("voice", voices[1].id)
@@ -84,7 +87,7 @@ def setup_assistant_voice():
 # запись и распознавание аудио
 def record_and_recognize_audio(*args):
     with microphone:
-        recognized_data = ''
+        recognized_data = ""
 
         print("Listening...")
         audio = recognizer.listen(microphone, 5, 5)
@@ -100,6 +103,13 @@ def record_and_recognize_audio(*args):
             print("Sorry, speech service is unreachable at the moment")
 
         return recognized_data
+
+
+# проигрывание речи ответов голосового ассистента
+# аудио сохраняются в формате mp3
+def play_voice_assistant_speech(text_to_speech):
+    ttsEngine.say(str(text_to_speech))
+    ttsEngine.runAndWait()
 
 
 # проигрывание приветственной речи
@@ -124,7 +134,8 @@ def play_farewell_and_quit(*args: tuple):
 
 # поиск в Google с автоматическим открытием ссылок (на список результатов и на сами результаты, если возможно)
 def search_for_term_on_google(*args: tuple):
-    search_term = ' '.join(args[0])
+    if not args[0]: return
+    search_term = " ".join(args[0])
 
     # открытие ссылки на поисковик в браузере
     url = "https://google.com/search?q=" + search_term
@@ -134,7 +145,7 @@ def search_for_term_on_google(*args: tuple):
     search_results = []
     for _ in search(search_term,  # что искать
                     tld="com",  # верхнеуровневый домен
-                    lang="en",  # язык
+                    lang=assistant.speech_language,  # в данном случае используется язык, на котором говорит ассистент
                     num=1,  # количество результатов на странице
                     start=0,  # индекс первого извлекаемого результата
                     stop=1,  # индекс последнего извлекаемого результата (я хочу, чтобы открывался первый результат)
@@ -149,17 +160,35 @@ def search_for_term_on_google(*args: tuple):
 
 # поиск видео на YouTube с автоматическим открытием ссылки на список результатов
 def search_for_video_on_youtube(*args: tuple):
-    search_term = ' '.join(args[0])
+    if not args[0]: return
+    search_term = " ".join(args[0])
     url = "https://www.youtube.com/results?search_query=" + search_term
     webbrowser.get().open(url)
     play_voice_assistant_speech("Here is what I found for " + search_term + "on youtube")
 
 
-# проигрывание речи ответов голосового ассистента
-# аудио сохраняются в формате mp3
-def play_voice_assistant_speech(text_to_speech):
-    ttsEngine.say(str(text_to_speech))
-    ttsEngine.runAndWait()
+# поиск в Wikipedia определения с озвучиванием результатов и открытием ссылок
+def search_for_definition_on_wikipedia(*args: tuple):
+    if not args[0]: return
+
+    search_term = " ".join(args[0])
+
+    # установка языка (в данном случае используется язык, на котором говорит ассистент)
+    wiki = wikipediaapi.Wikipedia(assistant.speech_language)
+
+    # поиск страницы по запросу, чтение summary, открытие ссылки на страницу для получения подробной информации
+    wiki_page = wiki.page(search_term)
+    if wiki_page.exists():
+        play_voice_assistant_speech("Here is what I found for" + search_term + "on Wikipedia")
+        webbrowser.get().open(wiki_page.fullurl)
+
+        # чтение ассистентом первых двух предложений summary со страницы Wikipedia
+        play_voice_assistant_speech(wiki_page.summary.split(".")[:2])
+    else:
+        # открытие ссылки на поисковик в браузере в случае, если на Wikipedia не удалось найти ничего по запросу
+        play_voice_assistant_speech("Can't find" + search_term + "on Wikipedia. But here is what I found on google")
+        url = "https://google.com/search?q=" + search_term
+        webbrowser.get().open(url)
 
 
 # выполнение команды с заданными пользователем кодом команды и аргументами
@@ -177,9 +206,10 @@ commands = {
     ("bye", "goodbye", "quit", "exit", "stop"): play_farewell_and_quit,
     ("search", "google", "find"): search_for_term_on_google,
     ("video", "youtube", "watch"): search_for_video_on_youtube,
+    ("wikipedia", "definition", "about"): search_for_definition_on_wikipedia,
 }
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     # инициализация инструментов распознавания и ввода речи
     recognizer = speech_recognition.Recognizer()
@@ -195,7 +225,7 @@ if __name__ == '__main__':
     assistant = VoiceAssistant()
     assistant.name = "Alice"
     assistant.sex = "female"
-    assistant.speech_language = "en-US"
+    assistant.speech_language = "en"
 
     # установка голоса по умолчанию
     setup_assistant_voice()
@@ -203,7 +233,7 @@ if __name__ == '__main__':
     while True:
         # старт записи речи с последующим выводом распознанной речи
         voice_input = record_and_recognize_audio()
-        print(colored(voice_input, 'blue'))
+        print(colored(voice_input, "blue"))
 
         # отделение комманд от дополнительной информации (аргументов)
         voice_input = voice_input.split(" ")
@@ -211,8 +241,8 @@ if __name__ == '__main__':
         command_options = [str(input_part) for input_part in voice_input[1:len(voice_input)]]
         execute_command_with_code(command, command_options)
 
-# TODO wikipedia search for definition with tts
 # TODO weather
 # TODO get current time/date in place
 # TODO toss a coin (get random value to choose something)
 # TODO take screenshot
+# TODO translate
