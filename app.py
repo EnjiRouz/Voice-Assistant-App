@@ -9,6 +9,7 @@
 * производить поисковый запрос видео в системе YouTube и открывать список результатов данного запроса;
 * выполнять поиск определения в Wikipedia c дальнейшим прочтением первых двух предложений;
 * переводить с изучаемого языка на родной язык пользователя (с учетом особенностей воспроизведения речи);
+* менять настройки языка распознавания и синтеза речи;
 * TODO........
 
 Голосовой ассистент использует для синтеза речи встроенные в операционную систему Windows 10 возможности
@@ -62,6 +63,7 @@ class VoiceAssistant:
     name = ""
     sex = ""
     speech_language = ""
+    recognition_language = ""
 
     def set_name(self, name):
         self.name = name
@@ -78,6 +80,7 @@ def setup_assistant_voice():
     voices = ttsEngine.getProperty("voices")
 
     if assistant.speech_language == "en":
+        assistant.recognition_language = "en-US"
         if assistant.sex == "female":
             # Microsoft Zira Desktop - English (United States)
             ttsEngine.setProperty("voice", voices[1].id)
@@ -85,6 +88,7 @@ def setup_assistant_voice():
             # Microsoft David Desktop - English (United States)
             ttsEngine.setProperty("voice", voices[2].id)
     else:
+        assistant.recognition_language = "ru-RU"
         # Microsoft Irina Desktop - Russian
         ttsEngine.setProperty("voice", voices[0].id)
 
@@ -99,7 +103,7 @@ def record_and_recognize_audio(*args):
         print("Started recognition...")
 
         try:
-            recognized_data = recognizer.recognize_google(audio).lower()
+            recognized_data = recognizer.recognize_google(audio, language=assistant.recognition_language).lower()
 
         except speech_recognition.UnknownValueError:
             pass  # play_voice_assistant_speech("What did you say again?")
@@ -212,7 +216,7 @@ def get_translation(*args: tuple):
                                                   src=person.target_language,  # с какого языка
                                                   dest=person.native_language)  # на какой язык
 
-        play_voice_assistant_speech("The translation for" + search_term + "is")
+        play_voice_assistant_speech("The translation for" + search_term + "in Russian is")
 
         # смена голоса ассистента на родной язык пользователя (чтобы можно было произнести перевод)
         assistant.speech_language = person.native_language
@@ -223,6 +227,7 @@ def get_translation(*args: tuple):
         translation_result = translator.translate(search_term,  # что перевести
                                                   src=person.native_language,  # с какого языка
                                                   dest=person.target_language)  # на какой язык
+        play_voice_assistant_speech("По-английски" + search_term + "будет как")
 
         # смена голоса ассистента на изучаемый язык пользователя (чтобы можно было произнести перевод)
         assistant.speech_language = person.target_language
@@ -236,6 +241,13 @@ def get_translation(*args: tuple):
     setup_assistant_voice()
 
 
+# изменение языка голосового ассистента (языка распознавания речи)
+def change_language(*args: tuple):
+    assistant.speech_language = "ru" if assistant.speech_language == "en" else "en"
+    setup_assistant_voice()
+    print(colored("Language switched to " + assistant.speech_language, "cyan"))
+
+
 # выполнение команды с заданными пользователем кодом команды и аргументами
 def execute_command_with_code(command_code: str, *args: list):
     for key in commands.keys():
@@ -247,12 +259,13 @@ def execute_command_with_code(command_code: str, *args: list):
 
 # перечень команд для использования (качестве ключей словаря используется hashable-тип tuple)
 commands = {
-    ("hello", "hi", "morning"): play_greetings,
-    ("bye", "goodbye", "quit", "exit", "stop"): play_farewell_and_quit,
-    ("search", "google", "find"): search_for_term_on_google,
-    ("video", "youtube", "watch"): search_for_video_on_youtube,
-    ("wikipedia", "definition", "about"): search_for_definition_on_wikipedia,
-    ("translate", "interpretation", "translation"): get_translation,
+    ("hello", "hi", "morning", "привет"): play_greetings,
+    ("bye", "goodbye", "quit", "exit", "stop", "пока"): play_farewell_and_quit,
+    ("search", "google", "find", "найди"): search_for_term_on_google,
+    ("video", "youtube", "watch", "видео"): search_for_video_on_youtube,
+    ("wikipedia", "definition", "about", "определение", "википедия"): search_for_definition_on_wikipedia,
+    ("translate", "interpretation", "translation", "перевод", "перевести", "переведи"): get_translation,
+    ("language", "язык"): change_language,
 }
 
 if __name__ == "__main__":
@@ -293,4 +306,3 @@ if __name__ == "__main__":
 # TODO get current time/date in place
 # TODO toss a coin (get random value to choose something)
 # TODO take screenshot
-# TODO зависимость языка распознавания от языка ассистента ("en-Us")
