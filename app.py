@@ -8,6 +8,7 @@
   (а также открывать список результатов и сами результаты данного запроса);
 * производить поисковый запрос видео в системе YouTube и открывать список результатов данного запроса;
 * выполнять поиск определения в Wikipedia c дальнейшим прочтением первых двух предложений;
+* переводить с изучаемого языка на родной язык пользователя (с учетом особенностей воспроизведения речи);
 * TODO........
 
 Голосовой ассистент использует для синтеза речи встроенные в операционную систему Windows 10 возможности
@@ -27,6 +28,7 @@ pip install google
 pip install SpeechRecognition
 pip install pyttsx3
 pip install wikipedia-api
+pip install googletrans
 
 Дополнительную информацию по установке и использованию библиотек можно найти здесь:
 https://pypi.org/
@@ -34,16 +36,19 @@ https://pypi.org/
 import speech_recognition  # распознавание пользовательской речи (Speech-To-Text)
 from termcolor import colored  # вывод цветных логов (для выделения распознанной речи)
 from googlesearch import search  # поиск в Google
+import googletrans  # использование системы Google Translate
 import pyttsx3  # синтез речи (Text-To-Speech)
 import wikipediaapi  # поиск определений в Wikipedia
 import random  # генератор случайных чисел
 import webbrowser  # работа с использованием браузера по умолчанию (открывание вкладок с web-страницей)
 
 
-# информация о владельце, включающие имя, город проживания
+# информация о владельце, включающие имя, город проживания, родной язык речи, изучаемый язык (для переводов текста)
 class OwnerPerson:
     name = ""
     home_city = ""
+    native_language = ""
+    target_language = ""
 
     def set_name(self, name):
         self.name = name
@@ -191,6 +196,46 @@ def search_for_definition_on_wikipedia(*args: tuple):
         webbrowser.get().open(url)
 
 
+# получение перевода текста с одного языка на другой (в данном случае с изучаемого на родной язык или обратно)
+def get_translation(*args: tuple):
+    if not args[0]: return
+
+    search_term = " ".join(args[0])
+    translator = googletrans.Translator()
+    translation_result = ""
+
+    old_assistant_language = assistant.speech_language
+
+    # если язык речи голосового ассистента и родной язык пользователя различаются, то перевод выполяется на родной язык
+    if assistant.speech_language != person.native_language:
+        translation_result = translator.translate(search_term,  # что перевести
+                                                  src=person.target_language,  # с какого языка
+                                                  dest=person.native_language)  # на какой язык
+
+        play_voice_assistant_speech("The translation for" + search_term + "is")
+
+        # смена голоса ассистента на родной язык пользователя (чтобы можно было произнести перевод)
+        assistant.speech_language = person.native_language
+        setup_assistant_voice()
+
+    # если язык речи голосового ассистента и родной язык пользователя одинаковы, то перевод выполяется на изучаемый язык
+    else:
+        translation_result = translator.translate(search_term,  # что перевести
+                                                  src=person.native_language,  # с какого языка
+                                                  dest=person.target_language)  # на какой язык
+
+        # смена голоса ассистента на изучаемый язык пользователя (чтобы можно было произнести перевод)
+        assistant.speech_language = person.target_language
+        setup_assistant_voice()
+
+    # произнесение перевода
+    play_voice_assistant_speech(translation_result.text)
+
+    # возвращение преждних настроек голоса помощника
+    assistant.speech_language = old_assistant_language
+    setup_assistant_voice()
+
+
 # выполнение команды с заданными пользователем кодом команды и аргументами
 def execute_command_with_code(command_code: str, *args: list):
     for key in commands.keys():
@@ -207,6 +252,7 @@ commands = {
     ("search", "google", "find"): search_for_term_on_google,
     ("video", "youtube", "watch"): search_for_video_on_youtube,
     ("wikipedia", "definition", "about"): search_for_definition_on_wikipedia,
+    ("translate", "interpretation", "translation"): get_translation,
 }
 
 if __name__ == "__main__":
@@ -220,6 +266,8 @@ if __name__ == "__main__":
     person = OwnerPerson()
     person.name = "Tanya"
     person.home_city = "Yekaterinburg"
+    person.native_language = "ru"
+    person.target_language = "en"
 
     # настройка данных голосового помощника
     assistant = VoiceAssistant()
@@ -245,4 +293,4 @@ if __name__ == "__main__":
 # TODO get current time/date in place
 # TODO toss a coin (get random value to choose something)
 # TODO take screenshot
-# TODO translate
+# TODO зависимость языка распознавания от языка ассистента ("en-Us")
