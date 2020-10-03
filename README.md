@@ -17,8 +17,10 @@
 После чего его можно установить при помощи команды: `pip install PyAudio-0.2.11-cp37-cp37m-win_amd64.whl`
 
 Команды для установки прочих сторонних библиотек:
-* `pip install google` для работы с результатами поиска в Google
-* `pip install SpeechRecognition` для работы с распознаванием речи (Speech-To-Text)
-* `pip install pyttsx3` для работы синтеза речи на Windows (Text-To-Speech)
+Команда установки  | Назначение библиотеки
+----------------|----------------------
+`pip install google`       | Работа с результатами поиска в Google
+`pip install SpeechRecognition`       | Работа с распознаванием речи (Speech-To-Text)
+`pip install pyttsx3`   | Работа с синтезом речи на Windows (Text-To-Speech)
 
 Дополнительную информацию по установке и использованию библиотек можно найти [здесь](https://pypi.org/)
