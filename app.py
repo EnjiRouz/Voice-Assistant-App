@@ -1,7 +1,8 @@
 """
-Проект голосового помощника (ассистента) на Python 3
+Проект голосового ассистента на Python 3 для Windows 10
 
 Помощник умеет:
+* распознавать и синтезировать речь в offline-моде (без доступа к Интернету);
 * воспроизводить случайное приветствие;
 * воспроизводить случайное прощание с последующим завершением работы программы;
 * производить поисковый запрос в поисковой системе Google
@@ -18,11 +19,18 @@
 Для корректной работы системы распознавания речи в сочетании с библиотекой speech_recognition
 используется библиотека PyAudio для получения звука с микрофона.
 
-Для установки PyAudio можно найти и скачать нужный в зависимости от архитектуры файл здесь в папку с проектом:
+Для установки PyAudio можно найти и скачать нужный в зависимости от архитектуры и версии Python whl-файл здесь:
 https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio
 
-После чего его можно установить при помощи команды:
+Загрузив файл в папку с проектом, установку можно будет запустить с помощью подобной команды:
 pip install PyAudio-0.2.11-cp37-cp37m-win_amd64.whl
+
+Для использования SpeechRecognition в offline-режиме (без доступа к Интернету), потребуется дополнительно установить
+pocketsphinx, whl-файл для которого можно найти здесь в зависимости от требуемой архитектуры и версии Python:
+https://www.lfd.uci.edu/~gohlke/pythonlibs/#pocketsphinx
+
+Загрузив файл в папку с проектом, установку можно будет запустить с помощью подобной команды:
+pip install pocketsphinx-0.1.15-cp37-cp37m-win_amd64.whl
 
 Команды для установки прочих сторонних библиотек:
 pip install google
@@ -98,19 +106,29 @@ def record_and_recognize_audio(*args):
     with microphone:
         recognized_data = ""
 
+        # запоминание шумов окружения для последующей отчистки звука от них
+        recognizer.adjust_for_ambient_noise(microphone, duration=3)
         print("Listening...")
         audio = recognizer.listen(microphone, 5, 5)
         print("Started recognition...")
 
+        # использование online-распознавания через Google (высокое качество распознавания)
         try:
             recognized_data = recognizer.recognize_google(audio, language=assistant.recognition_language).lower()
 
         except speech_recognition.UnknownValueError:
             pass  # play_voice_assistant_speech("What did you say again?")
 
+        # в случае проблем с доступом в Интернет пороисходит попытка использовать offline-распознавание через Sphinx
         except speech_recognition.RequestError:
-            print("Sorry, speech service is unreachable at the moment")
-
+            print(colored
+                  ("Sorry, speech service is unreachable at the moment. Trying to use offline recognition...", "red"))
+            try:
+                recognized_data = recognizer.recognize_sphinx(audio, language=assistant.recognition_language).lower()
+            except speech_recognition.UnknownValueError:
+                pass  # play_voice_assistant_speech("What did you say again?")
+            except:
+                print(colored("Sorry, speech service is unavailable. Try again later", "red"))
         return recognized_data
 
 
@@ -306,3 +324,4 @@ if __name__ == "__main__":
 # TODO get current time/date in place
 # TODO toss a coin (get random value to choose something)
 # TODO take screenshot
+# TODO catch errors with offline mode (like cant get wikipedia)
