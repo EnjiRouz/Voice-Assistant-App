@@ -16,7 +16,7 @@
 Голосовой ассистент использует для синтеза речи встроенные в операционную систему Windows 10 возможности
 (т.е. голоса зависят от операционной системы). Для этого используется библиотека pyttsx3
 
-Для корректной работы системы распознавания речи в сочетании с библиотекой speech_recognition
+Для корректной работы системы распознавания речи в сочетании с библиотекой SpeechRecognition
 используется библиотека PyAudio для получения звука с микрофона.
 
 Для установки PyAudio можно найти и скачать нужный в зависимости от архитектуры и версии Python whl-файл здесь:
@@ -32,25 +32,35 @@ https://www.lfd.uci.edu/~gohlke/pythonlibs/#pocketsphinx
 Загрузив файл в папку с проектом, установку можно будет запустить с помощью подобной команды:
 pip install pocketsphinx-0.1.15-cp37-cp37m-win_amd64.whl
 
+Для получения данных прогноза погоды мною был использован сервис OpenWeatherMap, который требует API-ключ.
+Получить API-ключ и ознакомиться с документацией можно после регистрации (есть Free-тариф) здесь:
+https://openweathermap.org/
+
 Команды для установки прочих сторонних библиотек:
 pip install google
 pip install SpeechRecognition
 pip install pyttsx3
 pip install wikipedia-api
 pip install googletrans
+pip install python-dotenv
+pip install pyowm
 
 Дополнительную информацию по установке и использованию библиотек можно найти здесь:
 https://pypi.org/
 """
-import speech_recognition  # распознавание пользовательской речи (Speech-To-Text)
-from termcolor import colored  # вывод цветных логов (для выделения распознанной речи)
+
 from googlesearch import search  # поиск в Google
+from pyowm import OWM  # использование OpenWeatherMap для получения данных о погоде
+from termcolor import colored  # вывод цветных логов (для выделения распознанной речи)
+from dotenv import load_dotenv  # загрузка информации из .env-файла
+import speech_recognition  # распознавание пользовательской речи (Speech-To-Text)
 import googletrans  # использование системы Google Translate
 import pyttsx3  # синтез речи (Text-To-Speech)
 import wikipediaapi  # поиск определений в Wikipedia
 import random  # генератор случайных чисел
 import webbrowser  # работа с использованием браузера по умолчанию (открывание вкладок с web-страницей)
 import traceback  # для отлова исключений и вывода traceback без остановки работы программы
+import os  # для работы с файловой системой в операционной системе
 
 
 # информация о владельце, включающие имя, город проживания, родной язык речи, изучаемый язык (для переводов текста)
@@ -108,19 +118,19 @@ def record_and_recognize_audio(*args):
         recognized_data = ""
 
         # запоминание шумов окружения для последующей отчистки звука от них
-        recognizer.adjust_for_ambient_noise(microphone, duration=3)
-        print("Listening...")
+        recognizer.adjust_for_ambient_noise(microphone, duration=2)
+
         try:
+            print("Listening...")
             audio = recognizer.listen(microphone, 5, 5)
         except speech_recognition.WaitTimeoutError:
             play_voice_assistant_speech("Can you check if your microphone is on, please?")
             traceback.print_exc()
             return
 
-        print("Started recognition...")
-
         # использование online-распознавания через Google (высокое качество распознавания)
         try:
+            print("Started recognition...")
             recognized_data = recognizer.recognize_google(audio, language=assistant.recognition_language).lower()
 
         except speech_recognition.UnknownValueError:
@@ -189,7 +199,7 @@ def search_for_term_on_google(*args: tuple):
             webbrowser.get().open(_)
 
     # поскольку все ошибки предсказать сложно, то будет произведен отлов с последующим выводом без остановки программы
-    except Exception as error:
+    except:
         play_voice_assistant_speech("Seems like we have a trouble. See logs for more information")
         traceback.print_exc()
         return
@@ -232,7 +242,7 @@ def search_for_definition_on_wikipedia(*args: tuple):
             webbrowser.get().open(url)
 
     # поскольку все ошибки предсказать сложно, то будет произведен отлов с последующим выводом без остановки программы
-    except Exception as error:
+    except:
         play_voice_assistant_speech("Seems like we have a trouble. See logs for more information")
         traceback.print_exc()
         return
@@ -275,7 +285,7 @@ def get_translation(*args: tuple):
         play_voice_assistant_speech(translation_result.text)
 
     # поскольку все ошибки предсказать сложно, то будет произведен отлов с последующим выводом без остановки программы
-    except Exception as error:
+    except:
         play_voice_assistant_speech("Seems like we have a trouble. See logs for more information")
         traceback.print_exc()
 
@@ -283,6 +293,51 @@ def get_translation(*args: tuple):
         # возвращение преждних настроек голоса помощника
         assistant.speech_language = old_assistant_language
         setup_assistant_voice()
+
+
+# получение и озвучивание прогнза погоды
+def get_weather_forecast(*args: tuple):
+    # в случае наличия дополнительного аргумента - запрос погоды происходит по нему,
+    # иначе - используется город, заданный в настройках
+    if args[0]:
+        city_name = args[0][0]
+    else:
+        city_name = person.home_city
+
+    try:
+        # использование API-ключа, помещённого в .env-файл по примеру WEATHER_API_KEY = "01234abcd....."
+        weather_api_key = os.getenv("WEATHER_API_KEY")
+        open_weather_map = OWM(weather_api_key)
+
+        # запрос данных о текущем состоянии погоды
+        weather_manager = open_weather_map.weather_manager()
+        observation = weather_manager.weather_at_place(city_name)
+        weather = observation.weather
+
+    # поскольку все ошибки предсказать сложно, то будет произведен отлов с последующим выводом без остановки программы
+    except:
+        play_voice_assistant_speech("Seems like we have a trouble. See logs for more information")
+        traceback.print_exc()
+        return
+
+    # разбивание данных на части для удобства работы с ними
+    status = weather.detailed_status
+    temperature = weather.temperature('celsius')["temp"]
+    wind_speed = weather.wind()["speed"]
+    pressure = int(weather.pressure["press"] / 1.333)  # переведено из гПА в мм рт.ст.
+
+    # вывод логов
+    print(colored("Weather in " + city_name +
+                  ":\n * Status: " + status +
+                  "\n * Wind speed (m/sec): " + str(wind_speed) +
+                  "\n * Temperature (Celsius): " + str(temperature) +
+                  "\n * Pressure (mm Hg): " + str(pressure), "yellow"))
+
+    # озвучивание текущего состояния погоды ассистентом
+    play_voice_assistant_speech("It is" + status + "in" + city_name)
+    play_voice_assistant_speech("The temperature is" + str(temperature) + "degrees Celsius")
+    play_voice_assistant_speech("The wind speed is" + str(wind_speed) + "meters per second")
+    play_voice_assistant_speech("The pressure is" + str(pressure) + " mm Hg")
 
 
 # изменение языка голосового ассистента (языка распознавания речи)
@@ -310,6 +365,7 @@ commands = {
     ("wikipedia", "definition", "about", "определение", "википедия"): search_for_definition_on_wikipedia,
     ("translate", "interpretation", "translation", "перевод", "перевести", "переведи"): get_translation,
     ("language", "язык"): change_language,
+    ("weather", "forecast", "погода", "прогноз"): get_weather_forecast,
 }
 
 if __name__ == "__main__":
@@ -335,6 +391,9 @@ if __name__ == "__main__":
     # установка голоса по умолчанию
     setup_assistant_voice()
 
+    # загрузка информации из .env-файла
+    load_dotenv()
+
     while True:
         # старт записи речи с последующим выводом распознанной речи
         voice_input = record_and_recognize_audio()
@@ -346,7 +405,6 @@ if __name__ == "__main__":
         command_options = [str(input_part) for input_part in voice_input[1:len(voice_input)]]
         execute_command_with_code(command, command_options)
 
-# TODO weather
 # TODO get current time/date in place
 # TODO toss a coin (get random value to choose something)
 # TODO take screenshot
