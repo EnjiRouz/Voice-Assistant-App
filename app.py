@@ -50,6 +50,7 @@ import pyttsx3  # синтез речи (Text-To-Speech)
 import wikipediaapi  # поиск определений в Wikipedia
 import random  # генератор случайных чисел
 import webbrowser  # работа с использованием браузера по умолчанию (открывание вкладок с web-страницей)
+import traceback  # для отлова исключений и вывода traceback без остановки работы программы
 
 
 # информация о владельце, включающие имя, город проживания, родной язык речи, изучаемый язык (для переводов текста)
@@ -109,7 +110,13 @@ def record_and_recognize_audio(*args):
         # запоминание шумов окружения для последующей отчистки звука от них
         recognizer.adjust_for_ambient_noise(microphone, duration=3)
         print("Listening...")
-        audio = recognizer.listen(microphone, 5, 5)
+        try:
+            audio = recognizer.listen(microphone, 5, 5)
+        except speech_recognition.WaitTimeoutError:
+            play_voice_assistant_speech("Can you check if your microphone is on, please?")
+            traceback.print_exc()
+            return
+
         print("Started recognition...")
 
         # использование online-распознавания через Google (высокое качество распознавания)
@@ -132,8 +139,7 @@ def record_and_recognize_audio(*args):
         return recognized_data
 
 
-# проигрывание речи ответов голосового ассистента
-# аудио сохраняются в формате mp3
+# проигрывание речи ответов голосового ассистента (без сохранения аудио)
 def play_voice_assistant_speech(text_to_speech):
     ttsEngine.say(str(text_to_speech))
     ttsEngine.runAndWait()
@@ -170,16 +176,23 @@ def search_for_term_on_google(*args: tuple):
 
     # альтернативный поиск с автоматическим открытием ссылок на результаты (в некоторых случаях может быть небезопасно)
     search_results = []
-    for _ in search(search_term,  # что искать
-                    tld="com",  # верхнеуровневый домен
-                    lang=assistant.speech_language,  # в данном случае используется язык, на котором говорит ассистент
-                    num=1,  # количество результатов на странице
-                    start=0,  # индекс первого извлекаемого результата
-                    stop=1,  # индекс последнего извлекаемого результата (я хочу, чтобы открывался первый результат)
-                    pause=1.0,  # задержка между HTTP-запросами
-                    ):
-        search_results.append(_)
-        webbrowser.get().open(_)
+    try:
+        for _ in search(search_term,  # что искать
+                        tld="com",  # верхнеуровневый домен
+                        lang=assistant.speech_language,  # используется язык, на котором говорит ассистент
+                        num=1,  # количество результатов на странице
+                        start=0,  # индекс первого извлекаемого результата
+                        stop=1,  # индекс последнего извлекаемого результата (я хочу, чтобы открывался первый результат)
+                        pause=1.0,  # задержка между HTTP-запросами
+                        ):
+            search_results.append(_)
+            webbrowser.get().open(_)
+
+    # поскольку все ошибки предсказать сложно, то будет произведен отлов с последующим выводом без остановки программы
+    except Exception as error:
+        play_voice_assistant_speech("Seems like we have a trouble. See logs for more information")
+        traceback.print_exc()
+        return
 
     print(search_results)
     play_voice_assistant_speech("Here is what I found for" + search_term + "on google")
@@ -205,17 +218,24 @@ def search_for_definition_on_wikipedia(*args: tuple):
 
     # поиск страницы по запросу, чтение summary, открытие ссылки на страницу для получения подробной информации
     wiki_page = wiki.page(search_term)
-    if wiki_page.exists():
-        play_voice_assistant_speech("Here is what I found for" + search_term + "on Wikipedia")
-        webbrowser.get().open(wiki_page.fullurl)
+    try:
+        if wiki_page.exists():
+            play_voice_assistant_speech("Here is what I found for" + search_term + "on Wikipedia")
+            webbrowser.get().open(wiki_page.fullurl)
 
-        # чтение ассистентом первых двух предложений summary со страницы Wikipedia
-        play_voice_assistant_speech(wiki_page.summary.split(".")[:2])
-    else:
-        # открытие ссылки на поисковик в браузере в случае, если на Wikipedia не удалось найти ничего по запросу
-        play_voice_assistant_speech("Can't find" + search_term + "on Wikipedia. But here is what I found on google")
-        url = "https://google.com/search?q=" + search_term
-        webbrowser.get().open(url)
+            # чтение ассистентом первых двух предложений summary со страницы Wikipedia
+            play_voice_assistant_speech(wiki_page.summary.split(".")[:2])
+        else:
+            # открытие ссылки на поисковик в браузере в случае, если на Wikipedia не удалось найти ничего по запросу
+            play_voice_assistant_speech("Can't find" + search_term + "on Wikipedia. But here is what I found on google")
+            url = "https://google.com/search?q=" + search_term
+            webbrowser.get().open(url)
+
+    # поскольку все ошибки предсказать сложно, то будет произведен отлов с последующим выводом без остановки программы
+    except Exception as error:
+        play_voice_assistant_speech("Seems like we have a trouble. See logs for more information")
+        traceback.print_exc()
+        return
 
 
 # получение перевода текста с одного языка на другой (в данном случае с изучаемого на родной язык или обратно)
@@ -227,36 +247,42 @@ def get_translation(*args: tuple):
     translation_result = ""
 
     old_assistant_language = assistant.speech_language
+    try:
+        # если язык речи ассистента и родной язык пользователя различаются, то перевод выполяется на родной язык
+        if assistant.speech_language != person.native_language:
+            translation_result = translator.translate(search_term,  # что перевести
+                                                      src=person.target_language,  # с какого языка
+                                                      dest=person.native_language)  # на какой язык
 
-    # если язык речи голосового ассистента и родной язык пользователя различаются, то перевод выполяется на родной язык
-    if assistant.speech_language != person.native_language:
-        translation_result = translator.translate(search_term,  # что перевести
-                                                  src=person.target_language,  # с какого языка
-                                                  dest=person.native_language)  # на какой язык
+            play_voice_assistant_speech("The translation for" + search_term + "in Russian is")
 
-        play_voice_assistant_speech("The translation for" + search_term + "in Russian is")
+            # смена голоса ассистента на родной язык пользователя (чтобы можно было произнести перевод)
+            assistant.speech_language = person.native_language
+            setup_assistant_voice()
 
-        # смена голоса ассистента на родной язык пользователя (чтобы можно было произнести перевод)
-        assistant.speech_language = person.native_language
+        # если язык речи ассистента и родной язык пользователя одинаковы, то перевод выполяется на изучаемый язык
+        else:
+            translation_result = translator.translate(search_term,  # что перевести
+                                                      src=person.native_language,  # с какого языка
+                                                      dest=person.target_language)  # на какой язык
+            play_voice_assistant_speech("По-английски" + search_term + "будет как")
+
+            # смена голоса ассистента на изучаемый язык пользователя (чтобы можно было произнести перевод)
+            assistant.speech_language = person.target_language
+            setup_assistant_voice()
+
+        # произнесение перевода
+        play_voice_assistant_speech(translation_result.text)
+
+    # поскольку все ошибки предсказать сложно, то будет произведен отлов с последующим выводом без остановки программы
+    except Exception as error:
+        play_voice_assistant_speech("Seems like we have a trouble. See logs for more information")
+        traceback.print_exc()
+
+    finally:
+        # возвращение преждних настроек голоса помощника
+        assistant.speech_language = old_assistant_language
         setup_assistant_voice()
-
-    # если язык речи голосового ассистента и родной язык пользователя одинаковы, то перевод выполяется на изучаемый язык
-    else:
-        translation_result = translator.translate(search_term,  # что перевести
-                                                  src=person.native_language,  # с какого языка
-                                                  dest=person.target_language)  # на какой язык
-        play_voice_assistant_speech("По-английски" + search_term + "будет как")
-
-        # смена голоса ассистента на изучаемый язык пользователя (чтобы можно было произнести перевод)
-        assistant.speech_language = person.target_language
-        setup_assistant_voice()
-
-    # произнесение перевода
-    play_voice_assistant_speech(translation_result.text)
-
-    # возвращение преждних настроек голоса помощника
-    assistant.speech_language = old_assistant_language
-    setup_assistant_voice()
 
 
 # изменение языка голосового ассистента (языка распознавания речи)
@@ -324,4 +350,3 @@ if __name__ == "__main__":
 # TODO get current time/date in place
 # TODO toss a coin (get random value to choose something)
 # TODO take screenshot
-# TODO catch errors with offline mode (like cant get wikipedia)
