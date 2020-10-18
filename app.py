@@ -24,14 +24,14 @@
 https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio
 
 Загрузив файл в папку с проектом, установку можно будет запустить с помощью подобной команды:
-pip install PyAudio-0.2.11-cp37-cp37m-win_amd64.whl
+pip install PyAudio-0.2.11-cp38-cp38m-win_amd64.whl
 
 Для использования SpeechRecognition в offline-режиме (без доступа к Интернету), потребуется дополнительно установить
-pocketsphinx, whl-файл для которого можно найти здесь в зависимости от требуемой архитектуры и версии Python:
-https://www.lfd.uci.edu/~gohlke/pythonlibs/#pocketsphinx
+vosk, whl-файл для которого можно найти здесь в зависимости от требуемой архитектуры и версии Python:
+https://github.com/alphacep/vosk-api/releases/
 
 Загрузив файл в папку с проектом, установку можно будет запустить с помощью подобной команды:
-pip install pocketsphinx-0.1.15-cp37-cp37m-win_amd64.whl
+pip install vosk-0.3.7-cp38-cp38-win_amd64.whl
 
 Для получения данных прогноза погоды мною был использован сервис OpenWeatherMap, который требует API-ключ.
 Получить API-ключ и ознакомиться с документацией можно после регистрации (есть Free-тариф) здесь:
@@ -50,6 +50,7 @@ pip install pyowm
 https://pypi.org/
 """
 
+from vosk import Model, KaldiRecognizer  # оффлайн-распознавание от Vosk
 from googlesearch import search  # поиск в Google
 from pyowm import OWM  # использование OpenWeatherMap для получения данных о погоде
 from termcolor import colored  # вывод цветных логов (для выделения распознанной речи)
@@ -62,6 +63,8 @@ import random  # генератор случайных чисел
 import webbrowser  # работа с использованием браузера по умолчанию (открывание вкладок с web-страницей)
 import traceback  # для отлова исключений и вывода traceback без остановки работы программы
 import os  # для работы с файловой системой в операционной системе
+import wave  # для работы с аудиофайлами
+import json  # для работы с json-файлами и строками
 
 
 # информация о владельце, включающие имя, город проживания, родной язык речи, изучаемый язык (для переводов текста)
@@ -124,6 +127,11 @@ def record_and_recognize_audio(*args):
         try:
             print("Listening...")
             audio = recognizer.listen(microphone, 5, 5)
+
+            with open("microphone-results.wav", "wb") as file:
+                file.write(audio.get_wav_data())
+                file.close()
+
         except speech_recognition.WaitTimeoutError:
             play_voice_assistant_speech("Can you check if your microphone is on, please?")
             traceback.print_exc()
@@ -137,16 +145,35 @@ def record_and_recognize_audio(*args):
         except speech_recognition.UnknownValueError:
             pass  # play_voice_assistant_speech("What did you say again?")
 
-        # в случае проблем с доступом в Интернет пороисходит попытка использовать offline-распознавание через Sphinx
+        # в случае проблем с доступом в Интернет пороисходит попытка использовать offline-распознавание через Vosk
         except speech_recognition.RequestError:
-            print(colored
-                  ("Sorry, speech service is unreachable at the moment. Trying to use offline recognition...", "red"))
+            print(colored("Trying to use offline recognition...", "cyan"))
+
             try:
-                recognized_data = recognizer.recognize_sphinx(audio, language=assistant.recognition_language).lower()
-            except speech_recognition.UnknownValueError:
-                pass  # play_voice_assistant_speech("What did you say again?")
+                # проверка наличия модели на нужном языке в каталоге приложения
+                if not os.path.exists("models/vosk-model-small-" + assistant.speech_language + "-0.4"):
+                    print(colored("Please download the model from:\n"
+                                  "https://alphacephei.com/vosk/models and unpack as 'model' in the current folder.",
+                                  "red"))
+                    exit(1)
+
+                # анализ записанного в микрофон аудио (чтобы избежать повторов фразы)
+                wave_audio_file = wave.open("microphone-results.wav", "rb")
+                model = Model("models/vosk-model-small-" + assistant.speech_language + "-0.4")
+                offline_recognizer = KaldiRecognizer(model, wave_audio_file.getframerate())
+
+                data = wave_audio_file.readframes(wave_audio_file.getnframes())
+                if len(data) > 0:
+                    if offline_recognizer.AcceptWaveform(data):
+                        recognized_data = offline_recognizer.Result()
+
+                        # получение данных распознанного текста из JSON-строки (чтобы можно было выдать по ней ответ)
+                        recognized_data = json.loads(recognized_data)
+                        recognized_data = recognized_data["text"]
             except:
+                traceback.print_exc()
                 print(colored("Sorry, speech service is unavailable. Try again later", "red"))
+
         return recognized_data
 
 
@@ -396,8 +423,9 @@ if __name__ == "__main__":
     load_dotenv()
 
     while True:
-        # старт записи речи с последующим выводом распознанной речи
+        # старт записи речи с последующим выводом распознанной речи и удалением записанного в микрофон аудио
         voice_input = record_and_recognize_audio()
+        os.remove("microphone-results.wav")
         print(colored(voice_input, "blue"))
 
         # отделение комманд от дополнительной информации (аргументов)
@@ -409,3 +437,8 @@ if __name__ == "__main__":
 # TODO get current time/date in place
 # TODO toss a coin (get random value to choose something)
 # TODO take screenshot
+# TODO find person
+# TODO food order
+# TODO talk when button is pressed?
+# TODO create json-like config?
+# TODO use nltk (nature language tool kit)

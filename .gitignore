@@ -1,8 +1,12 @@
 .idea/*
 __pycache__/
 
+models/*
+whl/*
+
 **/*.mpeg
 **/*.mp3
 **/*.whl
 **/*.google-cookie
 **/*.env
+**/*.wav

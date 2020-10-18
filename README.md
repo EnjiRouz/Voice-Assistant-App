@@ -23,18 +23,19 @@
     
 Для установки PyAudio можно найти и скачать нужный в зависимости от архитектуры и версии Python whl-файл [здесь](https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio) в папку с проектом. После чего его можно установить при помощи подобной команды:
 
-`pip install PyAudio-0.2.11-cp37-cp37m-win_amd64.whl`
+`pip install PyAudio-0.2.11-cp38-cp38m-win_amd64.whl`
 
     Для использования SpeechRecognition в offline-режиме (без доступа к Интернету), 
-    потребуется дополнительно установить pocketsphinx (качество ниже, чем у Google)
+    потребуется дополнительно установить Vosk (качество моделей близко к Google)
     
     В проекте преимущественно используется Google при наличии доступа в Интернет и
-    предусмотрено переключение на Sphinx в случае отсутствия доступа к сети.
+    предусмотрено переключение на Vosk в случае отсутствия доступа к сети.
 
-Для избежания проблем с установкой, я предлагаю скачать whl-файл в зависимости от требуемой архитектуры и версии Python. Его можно найти [здесь](https://www.lfd.uci.edu/~gohlke/pythonlibs/#pocketsphinx). Загрузив файл в папку с проектом, установку можно будет запустить с помощью подобной команды: 
+Для избежания проблем с установкой, я предлагаю скачать whl-файл в зависимости от требуемой архитектуры и версии Python. Его можно найти [здесь](https://github.com/alphacep/vosk-api/releases/). Загрузив файл в папку с проектом, установку можно будет запустить с помощью подобной команды: 
 
-`pip install pocketsphinx-0.1.15-cp37-cp37m-win_amd64.whl`
+`pip install vosk-0.3.7-cp38-cp38-win_amd64.whl`
 
+Модели для распознавания речи с помощью Vosk можно найти [здесь](https://alphacephei.com/vosk/models). Я использовала в проекте [ru](https://alphacephei.com/vosk/models/vosk-model-small-ru-0.4.zip) и [en](http://alphacephei.com/vosk/models/vosk-model-small-en-us-0.4.zip)
 
 ### Настройка получения прогноза погоды от OpenWeatherMap
 Для получения данных прогноза погоды мною был использован сервис `OpenWeatherMap`, который **требует API-ключ**.
@@ -46,12 +47,12 @@
 Команды для установки прочих сторонних библиотек:
 Команда установки  | Назначение библиотеки
 ----------------|----------------------
-`pip install google`       | Работа с результатами поисковых запросов в Google
-`pip install SpeechRecognition`       | Работа с распознаванием речи (Speech-To-Text)
-`pip install pyttsx3`   | Работа с offline-синтезом речи на Windows (Text-To-Speech)
-`pip3 install wikipedia-api`| Работа с Wikipedia API
-`pip install googletrans`| Работа с Google Translate
-`pip install pyowm`| Работа с OpenWeatherMap для получения данных о погоде
+`pip install google`       | Поисковые запросы в Google
+`pip install SpeechRecognition`       | Распознавание речи (Speech-To-Text)
+`pip install pyttsx3`   | Offline-синтез речи на Windows (Text-To-Speech)
+`pip install wikipedia-api`| Wikipedia API
+`pip install googletrans`| Google Translate
+`pip install pyowm`| Получение данных погоды с помощью OpenWeatherMap
 `pip install python-dotenv`| Работа с `.env`-файлами для хранения API-ключей
 
 Дополнительную информацию по установке и использованию библиотек можно найти [здесь](https://pypi.org/)
@@ -60,4 +61,4 @@
     потому прилагаю только команды для установки.
     
     В случае возникновения проблем с установкой, вы можете воспользоваться тем же способом, 
-    который я предлагала для установки PyAudio и pocketsphinx выше. 
+    который я предлагала для установки PyAudio выше. 
