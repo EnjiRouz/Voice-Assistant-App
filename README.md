@@ -1,7 +1,7 @@
-# Voice Assistant for Windows 10 Python App
+# Voice Assistant Python App for Windows & Linux
 
 ### Возможности приложения
-Данный проект голосового ассистента на Python 3 для Windows 10 умеет:
+Данный проект голосового ассистента на Python 3 для Windows и Linux умеет:
 * распознавать и синтезировать речь в offline-моде (без доступа к Интернету);
 * сообщать о прогнозе погоды в любой точке мира;
 * производить поисковый запрос в поисковой системе Google
@@ -15,8 +15,8 @@
 * TODO многое другое...
 
 ### Настройка синтеза и анализа речи с возможностью offline-работы
-Голосовой ассистент использует для синтеза речи встроенные в операционную систему Windows 10 возможности
-(т.е. **голоса зависят от настроек операционной системы**). Для этого используется библиотека `pyttsx3`
+Голосовой ассистент использует для синтеза речи встроенные в операционные системы Windows и Linux возможности
+(т.е. **голоса зависят от настроек операционной системы**). Для этого используется библиотека `pyttsx3`. [Подробнее здесь](https://github.com/nateshmbhat/pyttsx3)
 
     Для корректной работы системы распознавания речи в сочетании с библиотекой SpeechRecognition
     используется библиотека PyAudio для получения звука с микрофона.
@@ -35,7 +35,7 @@
 
 `pip install vosk-0.3.7-cp38-cp38-win_amd64.whl`
 
-Модели для распознавания речи с помощью Vosk можно найти [здесь](https://alphacephei.com/vosk/models). Я использовала в проекте [ru](https://alphacephei.com/vosk/models/vosk-model-small-ru-0.4.zip) и [en](http://alphacephei.com/vosk/models/vosk-model-small-en-us-0.4.zip)
+Модели для распознавания речи с помощью Vosk можно найти [здесь](https://alphacephei.com/vosk/models). Я использовала в проекте [ru](https://alphacephei.com/vosk/models/vosk-model-small-ru-0.4.zip) и [en](http://alphacephei.com/vosk/models/vosk-model-small-en-us-0.4.zip) модели
 
 ### Настройка получения прогноза погоды от OpenWeatherMap
 Для получения данных прогноза погоды мною был использован сервис `OpenWeatherMap`, который **требует API-ключ**.
@@ -49,7 +49,8 @@
 ----------------|----------------------
 `pip install google`       | Поисковые запросы в Google
 `pip install SpeechRecognition`       | Распознавание речи (Speech-To-Text)
-`pip install pyttsx3`   | Offline-синтез речи на Windows (Text-To-Speech)
+`pip install vosk`       | Offline распознавание речи (Speech-To-Text)
+`pip install pyttsx3`   | Offline синтез речи на Windows (Text-To-Speech)
 `pip install wikipedia-api`| Wikipedia API
 `pip install googletrans`| Google Translate
 `pip install pyowm`| Получение данных погоды с помощью OpenWeatherMap
