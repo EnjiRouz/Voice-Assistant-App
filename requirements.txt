@@ -1,0 +1,10 @@
+PyAudio~=0.2.11
+google~=3.0.0
+SpeechRecognition~=3.8.1
+wikipedia-api~=0.5.4
+googletrans~=3.0.0
+pyttsx3~=2.90
+vosk~=0.3.7
+pyowm~=3.1.1
+termcolor~=1.1.0
+python-dotenv~=0.14.0

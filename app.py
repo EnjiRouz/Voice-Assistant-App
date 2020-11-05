@@ -46,6 +46,9 @@ pip install googletrans
 pip install python-dotenv
 pip install pyowm
 
+Для быстрой установки всех требуемых зависимостей можно воспользоваться командой:
+pip install requirements.txt
+
 Дополнительную информацию по установке и использованию библиотек можно найти здесь:
 https://pypi.org/
 """
