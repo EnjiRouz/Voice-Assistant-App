@@ -67,39 +67,65 @@ import wave  # для работы с аудиофайлами
 import json  # для работы с json-файлами и строками
 
 
-# информация о владельце, включающие имя, город проживания, родной язык речи, изучаемый язык (для переводов текста)
 class OwnerPerson:
+    """
+    Информация о владельце, включающие имя, город проживания, родной язык речи, изучаемый язык (для переводов текста)
+    """
     name = ""
     home_city = ""
     native_language = ""
     target_language = ""
 
     def set_name(self, name):
+        """
+        Изменение текущего имени пользователя на новое
+        :param name: имя, на которое нужно изменить текущее
+        """
         self.name = name
 
     def set_home_city(self, home_city):
+        """
+        Изменение текущего города пользователя на новый
+        :param home_city: город, на который нужно изменить текущий
+        """
         self.home_city = home_city
 
 
-# настройки голосового ассистента, включающие имя, пол, язык речи
 class VoiceAssistant:
+    """
+    Настройки голосового ассистента, включающие имя, пол, язык речи
+    """
     name = ""
     sex = ""
     speech_language = ""
     recognition_language = ""
 
     def set_name(self, name):
+        """
+        Изменение текущего имени ассистента на новое
+        :param name: имя, на которое нужно изменить текущее
+        """
         self.name = name
 
     def set_sex(self, sex):
+        """
+        Изменение текущего пола ассистента на другой
+        :param sex: пол, на который нужно изменить текущий
+        """
         self.sex = sex
 
     def set_speech_language(self, speech_language):
+        """
+        Изменение текущего языка ассистента на другой
+        :param speech_language: язык, на который нужно изменить текущий
+        """
         self.speech_language = speech_language
 
 
-# установка голоса по умолчанию (индекс может меняться в зависимости от настроек операционной системы)
 def setup_assistant_voice():
+    """
+    Установка голоса по умолчанию (индекс может меняться в зависимости от настроек операционной системы)
+    """
     voices = ttsEngine.getProperty("voices")
 
     if assistant.speech_language == "en":
@@ -116,12 +142,14 @@ def setup_assistant_voice():
         ttsEngine.setProperty("voice", voices[0].id)
 
 
-# запись и распознавание аудио
-def record_and_recognize_audio(*args):
+def record_and_recognize_audio(*args: tuple):
+    """
+    Запись и распознавание аудио
+    """
     with microphone:
         recognized_data = ""
 
-        # запоминание шумов окружения для последующей отчистки звука от них
+        # запоминание шумов окружения для последующей очистки звука от них
         recognizer.adjust_for_ambient_noise(microphone, duration=2)
 
         try:
@@ -130,7 +158,6 @@ def record_and_recognize_audio(*args):
 
             with open("microphone-results.wav", "wb") as file:
                 file.write(audio.get_wav_data())
-                file.close()
 
         except speech_recognition.WaitTimeoutError:
             play_voice_assistant_speech("Can you check if your microphone is on, please?")
@@ -148,43 +175,58 @@ def record_and_recognize_audio(*args):
         # в случае проблем с доступом в Интернет пороисходит попытка использовать offline-распознавание через Vosk
         except speech_recognition.RequestError:
             print(colored("Trying to use offline recognition...", "cyan"))
-
-            try:
-                # проверка наличия модели на нужном языке в каталоге приложения
-                if not os.path.exists("models/vosk-model-small-" + assistant.speech_language + "-0.4"):
-                    print(colored("Please download the model from:\n"
-                                  "https://alphacephei.com/vosk/models and unpack as 'model' in the current folder.",
-                                  "red"))
-                    exit(1)
-
-                # анализ записанного в микрофон аудио (чтобы избежать повторов фразы)
-                wave_audio_file = wave.open("microphone-results.wav", "rb")
-                model = Model("models/vosk-model-small-" + assistant.speech_language + "-0.4")
-                offline_recognizer = KaldiRecognizer(model, wave_audio_file.getframerate())
-
-                data = wave_audio_file.readframes(wave_audio_file.getnframes())
-                if len(data) > 0:
-                    if offline_recognizer.AcceptWaveform(data):
-                        recognized_data = offline_recognizer.Result()
-
-                        # получение данных распознанного текста из JSON-строки (чтобы можно было выдать по ней ответ)
-                        recognized_data = json.loads(recognized_data)
-                        recognized_data = recognized_data["text"]
-            except:
-                traceback.print_exc()
-                print(colored("Sorry, speech service is unavailable. Try again later", "red"))
+            recognized_data = use_offline_recognition()
 
         return recognized_data
 
 
-# проигрывание речи ответов голосового ассистента (без сохранения аудио)
+def use_offline_recognition():
+    """
+    Переключение на оффлайн-распознавание речи
+    :return: распознанная фраза
+    """
+    recognized_data = ""
+    try:
+        # проверка наличия модели на нужном языке в каталоге приложения
+        if not os.path.exists("models/vosk-model-small-" + assistant.speech_language + "-0.4"):
+            print(colored("Please download the model from:\n"
+                          "https://alphacephei.com/vosk/models and unpack as 'model' in the current folder.",
+                          "red"))
+            exit(1)
+
+        # анализ записанного в микрофон аудио (чтобы избежать повторов фразы)
+        wave_audio_file = wave.open("microphone-results.wav", "rb")
+        model = Model("models/vosk-model-small-" + assistant.speech_language + "-0.4")
+        offline_recognizer = KaldiRecognizer(model, wave_audio_file.getframerate())
+
+        data = wave_audio_file.readframes(wave_audio_file.getnframes())
+        if len(data) > 0:
+            if offline_recognizer.AcceptWaveform(data):
+                recognized_data = offline_recognizer.Result()
+
+                # получение данных распознанного текста из JSON-строки (чтобы можно было выдать по ней ответ)
+                recognized_data = json.loads(recognized_data)
+                recognized_data = recognized_data["text"]
+    except:
+        traceback.print_exc()
+        print(colored("Sorry, speech service is unavailable. Try again later", "red"))
+
+    return recognized_data
+
+
 def play_voice_assistant_speech(text_to_speech):
+    """
+    Проигрывание речи ответов голосового ассистента (без сохранения аудио)
+    :param text_to_speech: текст, который нужно преобразовать в речь
+    """
     ttsEngine.say(str(text_to_speech))
     ttsEngine.runAndWait()
 
 
-# проигрывание приветственной речи
 def play_greetings(*args: tuple):
+    """
+    Проигрывание случайной приветственной речи
+    """
     greetings = [
         "hello, " + person.name + "! How can I help you today?",
         "Good day to you " + person.name + "! How can I help you today?"
@@ -192,8 +234,10 @@ def play_greetings(*args: tuple):
     play_voice_assistant_speech(greetings[random.randint(0, len(greetings) - 1)])
 
 
-# проигрывание прощательной речи и выход
 def play_farewell_and_quit(*args: tuple):
+    """
+    Проигрывание прощательной речи и выход
+    """
     farewells = [
         "Goodbye, " + person.name + "! Have a nice day!",
         "See you soon, " + person.name + "!"
@@ -203,8 +247,11 @@ def play_farewell_and_quit(*args: tuple):
     quit()
 
 
-# поиск в Google с автоматическим открытием ссылок (на список результатов и на сами результаты, если возможно)
 def search_for_term_on_google(*args: tuple):
+    """
+    Поиск в Google с автоматическим открытием ссылок (на список результатов и на сами результаты, если возможно)
+    :param args: фраза поискового запроса
+    """
     if not args[0]: return
     search_term = " ".join(args[0])
 
@@ -236,8 +283,11 @@ def search_for_term_on_google(*args: tuple):
     play_voice_assistant_speech("Here is what I found for" + search_term + "on google")
 
 
-# поиск видео на YouTube с автоматическим открытием ссылки на список результатов
 def search_for_video_on_youtube(*args: tuple):
+    """
+    Поиск видео на YouTube с автоматическим открытием ссылки на список результатов
+    :param args: фраза поискового запроса
+    """
     if not args[0]: return
     search_term = " ".join(args[0])
     url = "https://www.youtube.com/results?search_query=" + search_term
@@ -245,8 +295,11 @@ def search_for_video_on_youtube(*args: tuple):
     play_voice_assistant_speech("Here is what I found for " + search_term + "on youtube")
 
 
-# поиск в Wikipedia определения с озвучиванием результатов и открытием ссылок
 def search_for_definition_on_wikipedia(*args: tuple):
+    """
+    Поиск в Wikipedia определения с последующим озвучиванием результатов и открытием ссылок
+    :param args: фраза поискового запроса
+    """
     if not args[0]: return
 
     search_term = " ".join(args[0])
@@ -276,8 +329,11 @@ def search_for_definition_on_wikipedia(*args: tuple):
         return
 
 
-# получение перевода текста с одного языка на другой (в данном случае с изучаемого на родной язык или обратно)
 def get_translation(*args: tuple):
+    """
+    Получение перевода текста с одного языка на другой (в данном случае с изучаемого на родной язык или обратно)
+    :param args: фраза, которую требуется перевести
+    """
     if not args[0]: return
 
     search_term = " ".join(args[0])
@@ -323,8 +379,11 @@ def get_translation(*args: tuple):
         setup_assistant_voice()
 
 
-# получение и озвучивание прогнза погоды
 def get_weather_forecast(*args: tuple):
+    """
+    Получение и озвучивание прогнза погоды
+    :param args: город, по которому должен выполняться запос
+    """
     # в случае наличия дополнительного аргумента - запрос погоды происходит по нему,
     # иначе - используется город, заданный в настройках
     if args[0]:
@@ -368,23 +427,32 @@ def get_weather_forecast(*args: tuple):
     play_voice_assistant_speech("The pressure is" + str(pressure) + " mm Hg")
 
 
-# изменение языка голосового ассистента (языка распознавания речи)
 def change_language(*args: tuple):
+    """
+    Изменение языка голосового ассистента (языка распознавания речи)
+    """
     assistant.speech_language = "ru" if assistant.speech_language == "en" else "en"
     setup_assistant_voice()
     print(colored("Language switched to " + assistant.speech_language, "cyan"))
 
 
-# выполнение команды с заданными пользователем кодом команды и аргументами
-def execute_command_with_code(command_code: str, *args: list):
+def execute_command_with_name(command_name: str, *args: list):
+    """
+    Выполнение заданной пользователем команды и аргументами
+    :param command_name: название команды
+    :param args: аргументы, которые будут переданы в метод
+    :return:
+    """
     for key in commands.keys():
-        if command_code in key:
+        if command_name in key:
             commands[key](*args)
         else:
-            pass  # print("Command code not found")
+            pass  # print("Command not found")
 
 
 # перечень команд для использования (качестве ключей словаря используется hashable-тип tuple)
+# в качестве альтернативы можно использовать JSON-объект с намерениями и сценариями
+# (подобно тем, что применяют для чат-ботов)
 commands = {
     ("hello", "hi", "morning", "привет"): play_greetings,
     ("bye", "goodbye", "quit", "exit", "stop", "пока"): play_farewell_and_quit,
@@ -419,7 +487,7 @@ if __name__ == "__main__":
     # установка голоса по умолчанию
     setup_assistant_voice()
 
-    # загрузка информации из .env-файла
+    # загрузка информации из .env-файла (там лежит API-ключ для OpenWeatherMap)
     load_dotenv()
 
     while True:
@@ -432,13 +500,14 @@ if __name__ == "__main__":
         voice_input = voice_input.split(" ")
         command = voice_input[0]
         command_options = [str(input_part) for input_part in voice_input[1:len(voice_input)]]
-        execute_command_with_code(command, command_options)
+        execute_command_with_name(command, command_options)
 
 # TODO get current time/date in place
 # TODO toss a coin (get random value to choose something)
 # TODO take screenshot
 # TODO find person
 # TODO food order
+# TODO recommend film by rating/genre (use recommendation system project)
 # TODO talk when button is pressed?
 # TODO create json-like config?
 # TODO use nltk (nature language tool kit)
