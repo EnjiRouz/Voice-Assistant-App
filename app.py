@@ -1,5 +1,5 @@
 """
-Проект голосового ассистента на Python 3 для Windows 10
+Проект голосового ассистента на Python 3 от восхитительной EnjiRouz :Р
 
 Помощник умеет:
 * распознавать и синтезировать речь в offline-моде (без доступа к Интернету);
@@ -64,10 +64,31 @@ import pyttsx3  # синтез речи (Text-To-Speech)
 import wikipediaapi  # поиск определений в Wikipedia
 import random  # генератор случайных чисел
 import webbrowser  # работа с использованием браузера по умолчанию (открывание вкладок с web-страницей)
-import traceback  # для отлова исключений и вывода traceback без остановки работы программы
-import os  # для работы с файловой системой в операционной системе
-import wave  # для работы с аудиофайлами
-import json  # для работы с json-файлами и строками
+import traceback  # вывод traceback без остановки работы программы при отлове исключений
+import json  # работа с json-файлами и json-строками
+import wave  # создание и чтение аудиофайлов формата wav
+import os  # работа с файловой системой
+
+
+class Translation:
+    """
+    Получение вшитого в приложение перевода строк для создания мультиязычного ассистента
+    """
+    with open("translations.json", "r", encoding="UTF-8") as file:
+        translations = json.load(file)
+
+    def get(self, text: str):
+        """
+        Получение перевода строки из файла на нужный язык (по его коду)
+        :param text: текст, который требуется перевести
+        :return: вшитый в приложение перевод текста
+        """
+        if text in self.translations:
+            return self.translations[text][assistant.speech_language]
+        else:
+            # в случае отсутствия перевода происходит вывод сообщения об этом в логах и возврат исходного текста
+            print(colored("Not translated phrase: {}".format(text), "red"))
+            return text
 
 
 class OwnerPerson:
@@ -97,6 +118,8 @@ class OwnerPerson:
 class VoiceAssistant:
     """
     Настройки голосового ассистента, включающие имя, пол, язык речи
+    Примечание: для мультиязычных голосовых ассистентов лучше создать отдельный класс,
+    который будет брать перевод из JSON-файла с нужным языком
     """
     name = ""
     sex = ""
@@ -163,7 +186,7 @@ def record_and_recognize_audio(*args: tuple):
                 file.write(audio.get_wav_data())
 
         except speech_recognition.WaitTimeoutError:
-            play_voice_assistant_speech("Can you check if your microphone is on, please?")
+            play_voice_assistant_speech(translator.get("Can you check if your microphone is on, please?"))
             traceback.print_exc()
             return
 
@@ -175,7 +198,7 @@ def record_and_recognize_audio(*args: tuple):
         except speech_recognition.UnknownValueError:
             pass  # play_voice_assistant_speech("What did you say again?")
 
-        # в случае проблем с доступом в Интернет пороисходит попытка использовать offline-распознавание через Vosk
+        # в случае проблем с доступом в Интернет происходит попытка использовать offline-распознавание через Vosk
         except speech_recognition.RequestError:
             print(colored("Trying to use offline recognition...", "cyan"))
             recognized_data = use_offline_recognition()
@@ -231,8 +254,8 @@ def play_greetings(*args: tuple):
     Проигрывание случайной приветственной речи
     """
     greetings = [
-        "hello, " + person.name + "! How can I help you today?",
-        "Good day to you " + person.name + "! How can I help you today?"
+        translator.get("Hello, {}! How can I help you today?").format(person.name),
+        translator.get("Good day to you {}! How can I help you today?").format(person.name)
     ]
     play_voice_assistant_speech(greetings[random.randint(0, len(greetings) - 1)])
 
@@ -242,8 +265,8 @@ def play_farewell_and_quit(*args: tuple):
     Проигрывание прощательной речи и выход
     """
     farewells = [
-        "Goodbye, " + person.name + "! Have a nice day!",
-        "See you soon, " + person.name + "!"
+        translator.get("Goodbye, {}! Have a nice day!").format(person.name),
+        translator.get("See you soon, {}!").format(person.name)
     ]
     play_voice_assistant_speech(farewells[random.randint(0, len(farewells) - 1)])
     ttsEngine.stop()
@@ -278,12 +301,12 @@ def search_for_term_on_google(*args: tuple):
 
     # поскольку все ошибки предсказать сложно, то будет произведен отлов с последующим выводом без остановки программы
     except:
-        play_voice_assistant_speech("Seems like we have a trouble. See logs for more information")
+        play_voice_assistant_speech(translator.get("Seems like we have a trouble. See logs for more information"))
         traceback.print_exc()
         return
 
     print(search_results)
-    play_voice_assistant_speech("Here is what I found for" + search_term + "on google")
+    play_voice_assistant_speech(translator.get("Here is what I found for {} on google").format(search_term))
 
 
 def search_for_video_on_youtube(*args: tuple):
@@ -295,7 +318,7 @@ def search_for_video_on_youtube(*args: tuple):
     search_term = " ".join(args[0])
     url = "https://www.youtube.com/results?search_query=" + search_term
     webbrowser.get().open(url)
-    play_voice_assistant_speech("Here is what I found for " + search_term + "on youtube")
+    play_voice_assistant_speech(translator.get("Here is what I found for {} on youtube").format(search_term))
 
 
 def search_for_definition_on_wikipedia(*args: tuple):
@@ -314,20 +337,22 @@ def search_for_definition_on_wikipedia(*args: tuple):
     wiki_page = wiki.page(search_term)
     try:
         if wiki_page.exists():
-            play_voice_assistant_speech("Here is what I found for" + search_term + "on Wikipedia")
+            play_voice_assistant_speech(translator.get("Here is what I found for {} on Wikipedia").format(search_term))
             webbrowser.get().open(wiki_page.fullurl)
 
             # чтение ассистентом первых двух предложений summary со страницы Wikipedia
+            # (могут быть проблемы с мультиязычностью)
             play_voice_assistant_speech(wiki_page.summary.split(".")[:2])
         else:
             # открытие ссылки на поисковик в браузере в случае, если на Wikipedia не удалось найти ничего по запросу
-            play_voice_assistant_speech("Can't find" + search_term + "on Wikipedia. But here is what I found on google")
+            play_voice_assistant_speech(translator.get(
+                "Can't find {} on Wikipedia. But here is what I found on google").format(search_term))
             url = "https://google.com/search?q=" + search_term
             webbrowser.get().open(url)
 
     # поскольку все ошибки предсказать сложно, то будет произведен отлов с последующим выводом без остановки программы
     except:
-        play_voice_assistant_speech("Seems like we have a trouble. See logs for more information")
+        play_voice_assistant_speech(translator.get("Seems like we have a trouble. See logs for more information"))
         traceback.print_exc()
         return
 
@@ -340,18 +365,18 @@ def get_translation(*args: tuple):
     if not args[0]: return
 
     search_term = " ".join(args[0])
-    translator = googletrans.Translator()
+    google_translator = googletrans.Translator()
     translation_result = ""
 
     old_assistant_language = assistant.speech_language
     try:
         # если язык речи ассистента и родной язык пользователя различаются, то перевод выполяется на родной язык
         if assistant.speech_language != person.native_language:
-            translation_result = translator.translate(search_term,  # что перевести
+            translation_result = google_translator.translate(search_term,  # что перевести
                                                       src=person.target_language,  # с какого языка
                                                       dest=person.native_language)  # на какой язык
 
-            play_voice_assistant_speech("The translation for" + search_term + "in Russian is")
+            play_voice_assistant_speech("The translation for {} in Russian is".format(search_term))
 
             # смена голоса ассистента на родной язык пользователя (чтобы можно было произнести перевод)
             assistant.speech_language = person.native_language
@@ -359,10 +384,10 @@ def get_translation(*args: tuple):
 
         # если язык речи ассистента и родной язык пользователя одинаковы, то перевод выполяется на изучаемый язык
         else:
-            translation_result = translator.translate(search_term,  # что перевести
+            translation_result = google_translator.translate(search_term,  # что перевести
                                                       src=person.native_language,  # с какого языка
                                                       dest=person.target_language)  # на какой язык
-            play_voice_assistant_speech("По-английски" + search_term + "будет как")
+            play_voice_assistant_speech("По-английски {} будет как".format(search_term))
 
             # смена голоса ассистента на изучаемый язык пользователя (чтобы можно было произнести перевод)
             assistant.speech_language = person.target_language
@@ -373,7 +398,7 @@ def get_translation(*args: tuple):
 
     # поскольку все ошибки предсказать сложно, то будет произведен отлов с последующим выводом без остановки программы
     except:
-        play_voice_assistant_speech("Seems like we have a trouble. See logs for more information")
+        play_voice_assistant_speech(translator.get("Seems like we have a trouble. See logs for more information"))
         traceback.print_exc()
 
     finally:
@@ -406,7 +431,7 @@ def get_weather_forecast(*args: tuple):
 
     # поскольку все ошибки предсказать сложно, то будет произведен отлов с последующим выводом без остановки программы
     except:
-        play_voice_assistant_speech("Seems like we have a trouble. See logs for more information")
+        play_voice_assistant_speech(translator.get("Seems like we have a trouble. See logs for more information"))
         traceback.print_exc()
         return
 
@@ -423,11 +448,11 @@ def get_weather_forecast(*args: tuple):
                   "\n * Temperature (Celsius): " + str(temperature) +
                   "\n * Pressure (mm Hg): " + str(pressure), "yellow"))
 
-    # озвучивание текущего состояния погоды ассистентом
-    play_voice_assistant_speech("It is" + status + "in" + city_name)
-    play_voice_assistant_speech("The temperature is" + str(temperature) + "degrees Celsius")
-    play_voice_assistant_speech("The wind speed is" + str(wind_speed) + "meters per second")
-    play_voice_assistant_speech("The pressure is" + str(pressure) + " mm Hg")
+    # озвучивание текущего состояния погоды ассистентом (здесь для мультиязычности требуется дополнительная работа)
+    play_voice_assistant_speech(translator.get("It is {0} in {1}").format(status, city_name))
+    play_voice_assistant_speech(translator.get("The temperature is {} degrees Celsius").format(str(temperature)))
+    play_voice_assistant_speech(translator.get("The wind speed is {} meters per second").format(str(wind_speed)))
+    play_voice_assistant_speech(translator.get("The pressure is {} mm Hg").format(str(pressure)))
 
 
 def change_language(*args: tuple):
@@ -472,6 +497,8 @@ if __name__ == "__main__":
     # инициализация инструментов распознавания и ввода речи
     recognizer = speech_recognition.Recognizer()
     microphone = speech_recognition.Microphone()
+
+    # инициализация инструмента синтеза речи
     ttsEngine = pyttsx3.init()
 
     # настройка данных пользователя
@@ -489,6 +516,9 @@ if __name__ == "__main__":
 
     # установка голоса по умолчанию
     setup_assistant_voice()
+
+    # добавление возможностей перевода фраз (из заготовленного файла)
+    translator = Translation()
 
     # загрузка информации из .env-файла (там лежит API-ключ для OpenWeatherMap)
     load_dotenv()
@@ -508,7 +538,9 @@ if __name__ == "__main__":
 # TODO get current time/date in place
 # TODO toss a coin (get random value to choose something)
 # TODO take screenshot
-# TODO find person
+# TODO find person  name city site:vk.com,  таня новицкая site:facebook.com
+# https://vk.com/people/Таня_Новицкая
+# https://www.facebook.com/public/Левашов-Никита
 # TODO food order
 # TODO recommend film by rating/genre (use recommendation system project)
 # TODO talk when button is pressed?
