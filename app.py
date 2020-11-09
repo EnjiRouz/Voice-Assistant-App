@@ -464,6 +464,34 @@ def change_language(*args: tuple):
     print(colored("Language switched to " + assistant.speech_language, "cyan"))
 
 
+def run_person_through_social_nets_databases(*args: tuple):
+    """
+    Поиск человека по базе данных социальных сетей ВКонтакте и Facebook
+    :param args: имя, фамилия TODO город
+    """
+    if not args[0]: return
+
+    google_search_term = " ".join(args[0])
+    vk_search_term = "_".join(args[0])
+    fb_search_term = "-".join(args[0])
+
+    # открытие ссылки на поисковик в браузере
+    url = "https://google.com/search?q=" + google_search_term + " site: vk.com"
+    webbrowser.get().open(url)
+
+    url = "https://google.com/search?q=" + google_search_term + " site: facebook.com"
+    webbrowser.get().open(url)
+
+    # открытие ссылкок на поисковики социальных сетей в браузере
+    vk_url = "https://vk.com/people/" + vk_search_term
+    webbrowser.get().open(vk_url)
+
+    fb_url = "https://www.facebook.com/public/" + fb_search_term
+    webbrowser.get().open(fb_url)
+
+    play_voice_assistant_speech(translator.get("Here is what I found for {} on social nets").format(google_search_term))
+
+
 def execute_command_with_name(command_name: str, *args: list):
     """
     Выполнение заданной пользователем команды и аргументами
@@ -490,6 +518,7 @@ commands = {
     ("translate", "interpretation", "translation", "перевод", "перевести", "переведи"): get_translation,
     ("language", "язык"): change_language,
     ("weather", "forecast", "погода", "прогноз"): get_weather_forecast,
+    ("facebook", "person", "run", "пробей", "контакт"): run_person_through_social_nets_databases,
 }
 
 if __name__ == "__main__":
@@ -538,9 +567,6 @@ if __name__ == "__main__":
 # TODO get current time/date in place
 # TODO toss a coin (get random value to choose something)
 # TODO take screenshot
-# TODO find person  name city site:vk.com,  таня новицкая site:facebook.com
-# https://vk.com/people/Таня_Новицкая
-# https://www.facebook.com/public/Левашов-Никита
 # TODO food order
 # TODO recommend film by rating/genre (use recommendation system project)
 # TODO talk when button is pressed?

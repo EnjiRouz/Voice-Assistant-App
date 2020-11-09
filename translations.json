@@ -59,9 +59,9 @@
     "ru": "Давление {} миллиметров ртутного столба",
     "en": "The pressure is {} mm Hg"
   },
-  "": {
-    "ru": "",
-    "en": " "
+  "Here is what I found for {} on social nets": {
+    "ru": "Вот, что мне удалось найти по запросу {} в социальных сетях",
+    "en": "Here is what I found for {} on social nets"
   },
   "": {
     "ru": "",
