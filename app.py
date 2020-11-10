@@ -8,6 +8,8 @@
   (а также открывать список результатов и сами результаты данного запроса);
 * производить поисковый запрос видео в системе YouTube и открывать список результатов данного запроса;
 * выполнять поиск определения в Wikipedia c дальнейшим прочтением первых двух предложений;
+* искать человека по имени и фамилии в соцсетях ВКонтакте и Facebook;
+* "подбрасывать монетку";
 * переводить с изучаемого языка на родной язык пользователя (с учетом особенностей воспроизведения речи);
 * воспроизводить случайное приветствие;
 * воспроизводить случайное прощание с последующим завершением работы программы;
@@ -492,6 +494,21 @@ def run_person_through_social_nets_databases(*args: tuple):
     play_voice_assistant_speech(translator.get("Here is what I found for {} on social nets").format(google_search_term))
 
 
+def toss_coin(*args: tuple):
+    """
+    "Подбрасывание" монетки для выбора из 2 опций
+    """
+    flips_count, heads, tails = 3, 0, 0
+
+    for flip in range(flips_count):
+        if random.randint(0, 1) == 0:
+            heads += 1
+
+    tails = flips_count - heads
+    winner = "Tails" if tails > heads else "Heads"
+    play_voice_assistant_speech(translator.get(winner) + " " + translator.get("won"))
+
+
 def execute_command_with_name(command_name: str, *args: list):
     """
     Выполнение заданной пользователем команды и аргументами
@@ -519,6 +536,7 @@ commands = {
     ("language", "язык"): change_language,
     ("weather", "forecast", "погода", "прогноз"): get_weather_forecast,
     ("facebook", "person", "run", "пробей", "контакт"): run_person_through_social_nets_databases,
+    ("toss", "coin", "монета", "подбрось"): toss_coin,
 }
 
 if __name__ == "__main__":
@@ -564,8 +582,6 @@ if __name__ == "__main__":
         command_options = [str(input_part) for input_part in voice_input[1:len(voice_input)]]
         execute_command_with_name(command, command_options)
 
-# TODO get current time/date in place
-# TODO toss a coin (get random value to choose something)
 # TODO take screenshot
 # TODO food order
 # TODO recommend film by rating/genre (use recommendation system project)
