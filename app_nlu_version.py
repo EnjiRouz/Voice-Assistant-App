@@ -435,10 +435,11 @@ def get_weather_forecast(*args: tuple):
     """
     # в случае наличия дополнительного аргумента - запрос погоды происходит по нему,
     # иначе - используется город, заданный в настройках
-    if args[0]:
-        city_name = args[0][0]
-    else:
-        city_name = person.home_city
+    city_name = person.home_city
+
+    if args:
+        if args[0]:
+            city_name = args[0][0]
 
     try:
         # использование API-ключа, помещённого в .env-файл по примеру WEATHER_API_KEY = "01234abcd....."
@@ -577,7 +578,7 @@ config = {
             "responses": change_language
         },
         "toss_coin": {
-            "examples": ["подбрось монетку",
+            "examples": ["подбрось монетку", "подкинь монетку",
                          "toss coin", "coin", "flip a coin"],
             "responses": toss_coin
         }
@@ -618,7 +619,7 @@ def get_intent(request):
 
     # при добавлении новых намерений стоит уменьшать этот показатель
     print(best_intent_probability)
-    if best_intent_probability > 0.16:
+    if best_intent_probability > 0.157:
         return best_intent
 
 
