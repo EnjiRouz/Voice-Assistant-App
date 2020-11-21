@@ -108,20 +108,6 @@ class OwnerPerson:
     native_language = ""
     target_language = ""
 
-    def set_name(self, name):
-        """
-        Изменение текущего имени пользователя на новое
-        :param name: имя, на которое нужно изменить текущее
-        """
-        self.name = name
-
-    def set_home_city(self, home_city):
-        """
-        Изменение текущего города пользователя на новый
-        :param home_city: город, на который нужно изменить текущий
-        """
-        self.home_city = home_city
-
 
 class VoiceAssistant:
     """
@@ -133,29 +119,6 @@ class VoiceAssistant:
     sex = ""
     speech_language = ""
     recognition_language = ""
-
-
-
-    def set_name(self, name):
-        """
-        Изменение текущего имени ассистента на новое
-        :param name: имя, на которое нужно изменить текущее
-        """
-        self.name = name
-
-    def set_sex(self, sex):
-        """
-        Изменение текущего пола ассистента на другой
-        :param sex: пол, на который нужно изменить текущий
-        """
-        self.sex = sex
-
-    def set_speech_language(self, speech_language):
-        """
-        Изменение текущего языка ассистента на другой
-        :param speech_language: язык, на который нужно изменить текущий
-        """
-        self.speech_language = speech_language
 
 
 def setup_assistant_voice():
@@ -689,7 +652,7 @@ if __name__ == "__main__":
                 else:
                     config["failure_phrases"]()
 
-            # в случае длинной фарзы - выполняется поиск ключевой фразы и агрументов через каждое слово,
+            # в случае длинной фразы - выполняется поиск ключевой фразы и аргументов через каждое слово,
             # пока не будет найдено совпадение
             if len(voice_input_parts) > 1:
                 for guess in range(len(voice_input_parts)):
