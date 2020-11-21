@@ -61,6 +61,7 @@
 `pip install googletrans`| Google Translate
 `pip install pyowm`| Получение данных погоды с помощью OpenWeatherMap
 `pip install python-dotenv`| Работа с `.env`-файлами для хранения API-ключей
+`pip install scikit-learn`| Машинного обучение для угадывания намерений
 
 Дополнительную информацию по установке и использованию библиотек можно найти [здесь](https://pypi.org/)
 

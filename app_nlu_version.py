@@ -47,6 +47,7 @@ pip install wikipedia-api
 pip install googletrans
 pip install python-dotenv
 pip install pyowm
+pip install scikit-learn
 
 Для быстрой установки всех требуемых зависимостей можно воспользоваться командой:
 pip install requirements.txt
@@ -54,6 +55,11 @@ pip install requirements.txt
 Дополнительную информацию по установке и использованию библиотек можно найти здесь:
 https://pypi.org/
 """
+
+# машинное обучения для реализации возможности угадывания намерений
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import LinearSVC
 
 from vosk import Model, KaldiRecognizer  # оффлайн-распознавание от Vosk
 from googlesearch import search  # поиск в Google
@@ -127,6 +133,8 @@ class VoiceAssistant:
     sex = ""
     speech_language = ""
     recognition_language = ""
+
+
 
     def set_name(self, name):
         """
@@ -249,6 +257,17 @@ def play_voice_assistant_speech(text_to_speech):
     """
     ttsEngine.say(str(text_to_speech))
     ttsEngine.runAndWait()
+
+
+def play_failure_phrase(*args: tuple):
+    """
+    Проигрывание случайной фразы при неудачном распознавании
+    """
+    failure_phrases = [
+        translator.get("Can you repeat, please?"),
+        translator.get("What did you say again?")
+    ]
+    play_voice_assistant_speech(failure_phrases[random.randint(0, len(failure_phrases) - 1)])
 
 
 def play_greetings(*args: tuple):
@@ -375,8 +394,8 @@ def get_translation(*args: tuple):
         # если язык речи ассистента и родной язык пользователя различаются, то перевод выполяется на родной язык
         if assistant.speech_language != person.native_language:
             translation_result = google_translator.translate(search_term,  # что перевести
-                                                      src=person.target_language,  # с какого языка
-                                                      dest=person.native_language)  # на какой язык
+                                                             src=person.target_language,  # с какого языка
+                                                             dest=person.native_language)  # на какой язык
 
             play_voice_assistant_speech("The translation for {} in Russian is".format(search_term))
 
@@ -387,8 +406,8 @@ def get_translation(*args: tuple):
         # если язык речи ассистента и родной язык пользователя одинаковы, то перевод выполяется на изучаемый язык
         else:
             translation_result = google_translator.translate(search_term,  # что перевести
-                                                      src=person.native_language,  # с какого языка
-                                                      dest=person.target_language)  # на какой язык
+                                                             src=person.native_language,  # с какого языка
+                                                             dest=person.target_language)  # на какой язык
             play_voice_assistant_speech("По-английски {} будет как".format(search_term))
 
             # смена голоса ассистента на изучаемый язык пользователя (чтобы можно было произнести перевод)
@@ -509,37 +528,105 @@ def toss_coin(*args: tuple):
     play_voice_assistant_speech(translator.get(winner) + " " + translator.get("won"))
 
 
-def execute_command_with_name(command_name: str, *args: list):
-    """
-    Выполнение заданной пользователем команды и аргументами
-    :param command_name: название команды
-    :param args: аргументы, которые будут переданы в метод
-    :return:
-    """
-    for key in commands.keys():
-        if command_name in key:
-            commands[key](*args)
-        else:
-            pass  # print("Command not found")
+# перечень команд для использования в виде JSON-объекта
+config = {
+    "intents": {
+        "greeting": {
+            "examples": ["привет", "здравствуй", "добрый день",
+                         "hello", "good morning"],
+            "responses": play_greetings
+        },
+        "farewell": {
+            "examples": ["пока", "до свидания", "увидимся", "до встречи",
+                         "goodbye", "bye", "see you soon"],
+            "responses": play_farewell_and_quit
+        },
+        "google_search": {
+            "examples": ["найди в гугл",
+                         "search on google", "google", "find on google"],
+            "responses": search_for_term_on_google
+        },
+        "youtube_search": {
+            "examples": ["найди видео", "покажи видео",
+                         "find video", "find on youtube", "search on youtube"],
+            "responses": search_for_video_on_youtube
+        },
+        "wikipedia_search": {
+            "examples": ["найди определение", "найди на википедии",
+                         "find on wikipedia", "find definition", "tell about"],
+            "responses": search_for_definition_on_wikipedia
+        },
+        "person_search": {
+            "examples": ["пробей имя", "найди человека",
+                         "find on facebook", " find person", "run person", "search for person"],
+            "responses": run_person_through_social_nets_databases
+        },
+        "weather_forecast": {
+            "examples": ["прогноз погоды", "какая погода",
+                         "weather forecast", "report weather"],
+            "responses": get_weather_forecast
+        },
+        "translation": {
+            "examples": ["выполни перевод", "переведи", "найди перевод",
+                         "translate", "find translation"],
+            "responses": get_translation
+        },
+        "language": {
+            "examples": ["смени язык", "поменяй язык",
+                         "change speech language", "language"],
+            "responses": change_language
+        },
+        "toss_coin": {
+            "examples": ["подбрось монетку",
+                         "toss coin", "coin", "flip a coin"],
+            "responses": toss_coin
+        }
+    },
 
-
-# перечень команд для использования (качестве ключей словаря используется hashable-тип tuple)
-# в качестве альтернативы можно использовать JSON-объект с намерениями и сценариями
-# (подобно тем, что применяют для чат-ботов)
-commands = {
-    ("hello", "hi", "morning", "привет"): play_greetings,
-    ("bye", "goodbye", "quit", "exit", "stop", "пока"): play_farewell_and_quit,
-    ("search", "google", "find", "найди"): search_for_term_on_google,
-    ("video", "youtube", "watch", "видео"): search_for_video_on_youtube,
-    ("wikipedia", "definition", "about", "определение", "википедия"): search_for_definition_on_wikipedia,
-    ("translate", "interpretation", "translation", "перевод", "перевести", "переведи"): get_translation,
-    ("language", "язык"): change_language,
-    ("weather", "forecast", "погода", "прогноз"): get_weather_forecast,
-    ("facebook", "person", "run", "пробей", "контакт"): run_person_through_social_nets_databases,
-    ("toss", "coin", "монета", "подбрось"): toss_coin,
+    "failure_phrases": play_failure_phrase
 }
 
-if __name__ == "__main__":
+
+def prepare_corpus():
+    """
+    Подготовка модели для угадывания намерения пользователя
+    """
+    corpus = []
+    target_vector = []
+    for intent_name, intent_data in config["intents"].items():
+        for example in intent_data["examples"]:
+            corpus.append(example)
+            target_vector.append(intent_name)
+
+    training_vector = vectorizer.fit_transform(corpus)
+    classifier_probability.fit(training_vector, target_vector)
+    classifier.fit(training_vector, target_vector)
+
+
+def get_intent(request):
+    """
+    Получение наиболее вероятного намерения в зависимости от запроса пользователя
+    :param request: запрос пользователя
+    :return: наиболее вероятное намерение
+    """
+    best_intent = classifier.predict(vectorizer.transform([request]))[0]
+
+    index_of_best_intent = list(classifier_probability.classes_).index(best_intent)
+    probabilities = classifier_probability.predict_proba(vectorizer.transform([request]))[0]
+
+    best_intent_probability = probabilities[index_of_best_intent]
+
+    # при добавлении новых намерений стоит уменьшать этот показатель
+    print(best_intent_probability)
+    if best_intent_probability > 0.16:
+        return best_intent
+
+
+def make_preparations():
+    """
+    Подготовка глобальных переменных к запуску приложения
+    """
+    global recognizer, microphone, ttsEngine, person, assistant, translator, vectorizer, classifier_probability, classifier
 
     # инициализация инструментов распознавания и ввода речи
     recognizer = speech_recognition.Recognizer()
@@ -570,17 +657,50 @@ if __name__ == "__main__":
     # загрузка информации из .env-файла (там лежит API-ключ для OpenWeatherMap)
     load_dotenv()
 
+    # подготовка корпуса для распознавания запросов пользователя с некоторой вероятностью (поиск похожих)
+    vectorizer = TfidfVectorizer(analyzer="char", ngram_range=(2, 3))
+    classifier_probability = LogisticRegression()
+    classifier = LinearSVC()
+    prepare_corpus()
+
+
+if __name__ == "__main__":
+    make_preparations()
+
     while True:
         # старт записи речи с последующим выводом распознанной речи и удалением записанного в микрофон аудио
         voice_input = record_and_recognize_audio()
-        os.remove("microphone-results.wav")
+
+        if os.path.exists("microphone-results.wav"):
+            os.remove("microphone-results.wav")
+
         print(colored(voice_input, "blue"))
 
         # отделение комманд от дополнительной информации (аргументов)
-        voice_input = voice_input.split(" ")
-        command = voice_input[0]
-        command_options = [str(input_part) for input_part in voice_input[1:len(voice_input)]]
-        execute_command_with_name(command, command_options)
+        if voice_input:
+            voice_input_parts = voice_input.split(" ")
+
+            # если было сказано одно слово - выполняем команду сразу без дополнительных аргументов
+            if len(voice_input_parts) == 1:
+                intent = get_intent(voice_input)
+                if intent:
+                    config["intents"][intent]["responses"]()
+                else:
+                    config["failure_phrases"]()
+
+            # в случае длинной фарзы - выполняется поиск ключевой фразы и агрументов через каждое слово,
+            # пока не будет найдено совпадение
+            if len(voice_input_parts) > 1:
+                for guess in range(len(voice_input_parts)):
+                    intent = get_intent((" ".join(voice_input_parts[0:guess])).strip())
+                    print(intent)
+                    if intent:
+                        command_options = [voice_input_parts[guess:len(voice_input_parts)]]
+                        print(command_options)
+                        config["intents"][intent]["responses"](*command_options)
+                        break
+                    if not intent and guess == len(voice_input_parts)-1:
+                        config["failure_phrases"]()
 
 # TODO food order
 # TODO recommend film by rating/genre (use recommendation system project)
